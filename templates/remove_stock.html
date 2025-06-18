@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Remove Stock</h1>
+
+<!-- Flash message -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<!-- Lot Number Scan / Lookup -->
+<div class="mb-3">
+    <label class="form-label">Scan Lot Number</label>
+    <div class="input-group">
+        <input type="text" id="lot_number_input" class="form-control" placeholder="Scan or enter Lot Number">
+        <button class="btn btn-primary" type="button" onclick="lookupLot()">Check</button>
+    </div>
+</div>
+
+<!-- Remove Stock Form -->
+<form action="/remove" method="POST" id="removeForm">
+    <div class="mb-3">
+        <label class="form-label">Name</label>
+        <input type="text" name="name" id="name" class="form-control" readonly required>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Lot Number</label>
+        <input type="text" name="lot_number" id="lot_number" class="form-control" readonly required>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Expiry Date</label>
+        <input type="date" name="expiry_date" id="expiry_date" class="form-control" readonly required>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Received Date</label>
+        <input type="date" name="received_date" id="received_date" class="form-control" readonly required>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Acceptance Tested</label>
+        <input type="date" name="acceptance_tested" id="acceptance_tested" class="form-control" readonly>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Passed By</label>
+        <input type="text" name="passed_by" id="passed_by" class="form-control" readonly>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Location</label>
+        <input type="text" name="location" id="location" class="form-control" readonly>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Reason for Removal</label>
+        <select name="reason" id="reason" class="form-control" required onchange="checkFormComplete()">
+            <option value="">-- Select Reason --</option>
+            <option value="Depleted">Depleted</option>
+            <option value="Out of Date">Out of Date</option>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Date of Removal</label>
+        <input type="date" name="removal_date" id="removal_date" class="form-control" required onchange="checkFormComplete()">
+    </div>
+
+    <button type="submit" id="confirmButton" class="btn btn-danger" disabled>Confirm Removal</button>
+    <button type="button" class="btn btn-secondary" onclick="clearForm()">Clear</button>
+    <a href="/" class="btn btn-outline-secondary">Back to Stock List</a>
+</form>
+
+<!-- Javascript for AJAX Lookup and Form Behaviour -->
+<script>
+function lookupLot() {
+    const lotNumber = document.getElementById('lot_number_input').value;
+    if (!lotNumber) return;
+
+    fetch('/api/lookup_lot/' + encodeURIComponent(lotNumber))
+        .then(response => response.json())
+        .then(data => {
+            if (Object.keys(data).length === 0) {
+                alert('Lot Number not found. Please try again.');
+                clearForm();
+            } else {
+                document.getElementById('name').value = data.name || '';
+                document.getElementById('lot_number').value = data.lot_number || '';
+                document.getElementById('expiry_date').value = data.expiry_date || '';
+                document.getElementById('received_date').value = data.received_date || '';
+                document.getElementById('acceptance_tested').value = data.acceptance_tested || '';
+                document.getElementById('passed_by').value = data.passed_by || '';
+                document.getElementById('location').value = data.location || '';
+                checkFormComplete();
+            }
+
+            // Always fill lot_number field in form
+            document.getElementById('lot_number').value = lotNumber;
+        });
+}
+
+// Set today's date for Date of Removal
+window.onload = function() {
+    const today = new Date().toISOString().substr(0, 10);
+    document.getElementById('removal_date').value = today;
+    checkFormComplete();
+};
+
+function clearForm() {
+    document.getElementById('removeForm').reset();
+    document.getElementById('confirmButton').disabled = true;
+}
+
+function checkFormComplete() {
+    const lotNumber = document.getElementById('lot_number').value;
+    const reason = document.getElementById('reason').value;
+    const removalDate = document.getElementById('removal_date').value;
+
+    document.getElementById('confirmButton').disabled = !(lotNumber && reason && removalDate);
+}
+</script>
+
+{% endblock %}
